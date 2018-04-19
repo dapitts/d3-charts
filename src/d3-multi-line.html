@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>D3 Multi-Line</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="//d3js.org/d3.v4.min.js"></script>
+        <style>
+            .axis--x path {
+                /*display: none;*/
+            }
+            .line {
+                fill: none;
+                stroke: steelblue;
+                stroke-width: 1.5px;
+            }
+        </style>
+    </head>
+    <body>
+        <svg width="1200" height="800"></svg>
+        <script>
+            var svg = d3.select('svg'),
+                margin = { top: 50, right: 50, bottom: 50, left: 50 },
+                width = svg.attr('width') - margin.left - margin.right,
+                height = svg.attr('height') - margin.top - margin.bottom,
+                g = svg.append('g').attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+        
+            var x = d3.scaleLinear().range([0, width]),
+                y = d3.scaleLinear().range([height, 0]),
+                //z = d3.scaleOrdinal(d3.schemeCategory10);  // Limited to 10 colors
+                z = d3.scaleOrdinal(["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf", "#ffcc00", "#0000ff", "#00ff00"]);
+        
+            var line = d3.line()
+                .curve(d3.curveLinear)
+                .defined(function(d) { return d.count !== null; })
+                .x(function(d) { return x(d.week); })
+                .y(function(d) { return y(d.count); });
+        
+            d3.csv('facility.csv', type, function(error, data) {
+                if (error) throw error;
+                
+                var facilities = data.columns.slice(1).map(function(id) {
+                    return {
+                        id: id,
+                        values: data.map(function(d) {
+                            return { week: d.Week, count: d[id] };
+                        })
+                    };
+                });
+                
+                x.domain(d3.extent(data, function(d) { return d.Week; }))
+                
+                y.domain([
+                    d3.min(facilities, function(c) { return d3.min(c.values, function(d) { return d.count; }); }),
+                    d3.max(facilities, function(c) { return d3.max(c.values, function(d) { return d.count; }); })
+                ]);
+                
+                z.domain(facilities.map(function(c) { return c.id; }));
+                
+                g.append('g')
+                   .attr('class', 'axis axis--x')
+                   .attr('transform', 'translate(0,' + height + ')')
+                   .call(d3.axisBottom(x))
+                 .append('text')
+                   .attr('x', (width / 2))
+                   .attr('y', 30)
+                   .attr('fill', '#000')
+                   .style('text-anchor', 'middle')
+                   .text('Week of Reply Dt');
+         
+                g.append('g')
+                   .attr('class', 'axis axis--y')
+                   .call(d3.axisLeft(y))
+                 .append('text')
+                   .attr('transform', 'rotate(-90)')
+                   .attr('y', 0 - margin.left)
+                   .attr('x', 0 - (height / 2))
+                   .attr('dy', '1em')
+                   .attr('fill', '#000')
+                   .style('text-anchor', 'middle')
+                   .text('Count of Number of Records');
+           
+                g.append('text')
+                 .attr('x', (width / 2))
+                 .attr('y', -20)
+                 .style('text-anchor', 'middle')
+                 .text('2017 Run Rates by Facility Week over Week');
+           
+                var facility = g.selectAll('.facility')
+                   .data(facilities)
+                   .enter().append('g')
+                     .attr('class', 'facility');
+             
+                facility.append('path')
+                   .attr('class', 'line')
+                   .attr('d', function(d) { return line(d.values); })
+                   .style('stroke', function(d) { return z(d.id); });
+           
+                /*facility.append('text')
+                   .datum(function(d) { return { id: d.id, value: d.values[d.values.length - 1] }; })
+                   .attr('transform', function(d) { return 'translate(' + x(d.value.week) + ',' + y(d.value.count) + ')'; })
+                   .attr('x', 3)
+                   .attr('dy', '0.35em')
+                   .style('font', '10px sans-serif')
+                   .text(function(d) { return d.id; });*/
+            });
+            
+            function type(d, _, columns) {
+                d.Week = +d.Week;
+                
+                for (var i = 1, n = columns.length, c; i < n; ++i) {
+                    // Modified because missing values would be parsed as 0
+                    d[c = columns[i]] = d[c].length ? +d[c] : null;
+                }
+                
+                return d;
+            }
+        </script>
+    </body>
+</html>
